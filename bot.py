@@ -1,4 +1,6 @@
 import os
+import asyncio
+from aiohttp import web
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
@@ -7,8 +9,13 @@ API_HASH = os.environ.get("API_HASH")
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 ADMINS = [int(x) for x in os.environ.get("ADMINS", "").split()]
 CHANNELS = int(os.environ.get("CHANNELS"))
+PORT = int(os.environ.get("PORT", 8080))
 
 app = Client("FileStoreBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+
+# Dummy web server Render ke port check ko pass karne ke liye
+async def web_handler(request):
+    return web.Response(text="Bot is running!")
 
 @app.on_message(filters.command("start"))
 async def start(bot, message):
@@ -35,4 +42,16 @@ async def save_file(bot, message):
         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Open Link", url=share_link)]])
     )
 
-app.run()
+async def main():
+    server = web.Server(web_handler)
+    runner = web.ServerRunner(server)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", PORT)
+    await site.start()
+    await app.start()
+    print("Bot Started!")
+    await asyncio.Event().wait()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+    
